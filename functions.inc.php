@@ -1002,8 +1002,8 @@ function polycomphones_check_module($module)
 function polycomphones_get_kvstore($key)
 {
 	global $db;
-	return sql("SELECT val FROM kvstore
-		WHERE `key` = '".$db->escapeSimple($key)."' AND module = 'Sipsettings'",'getOne');
+	return sql("SELECT val FROM kvstore_Sipsettings
+		WHERE `key` = '".$db->escapeSimple($key)."'",'getOne');
 }
 
 function polycomphones_getvalue($id, $device, $global)
