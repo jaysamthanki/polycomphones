@@ -290,16 +290,69 @@ function polycomphones_get_phones_edit($id)
 {
 	global $db;
 	
-	$device = sql("SELECT name, mac, model, version, lastconfig, lastip FROM polycom_devices
-		WHERE id = \"{$db->escapeSimple($id)}\"",'getRow',DB_FETCHMODE_ASSOC);
+	$device = sql("SELECT name, mac, model, version, lastconfig, lastip FROM polycom_devices WHERE id = \"{$db->escapeSimple($id)}\"", 'getRow', DB_FETCHMODE_ASSOC);
 	
-	$lines = sql("SELECT lineid, deviceid, externalid FROM polycom_device_lines 
-		WHERE id = \"{$db->escapeSimple($id)}\"
-		ORDER BY lineid",'getAll',DB_FETCHMODE_ASSOC);
+	$lines = sql("SELECT lineid, deviceid, externalid FROM polycom_device_lines WHERE id = \"{$db->escapeSimple($id)}\" ORDER BY lineid", 'getAll', DB_FETCHMODE_ASSOC);
+	
+	if (!is_array($device)) 
+	{
+    	$device = array();
+		$device["name"] = '';
+		$device["mac"] = '';
+		$device["model"] = '';
+		$device["lastconfig"] = '';
+		$device["lastip"] = '';
+		$device["version"] = '';
+		$device["attendants"] = array();
+	}
+
+	// default all the settings.
+	$fields = array(
+			'lineKey_reassignment_enabled',
+			'lineKey_category_line',
+			'lineKey_category_blf',
+			'lineKey_category_favorites',
+			'lineKey_category_unassigned',
+			'softkey_feature_basicCallManagement_redundant',
+			'call_transfer_blindPreferred',
+			'call_callWaiting_ring',
+			'call_hold_localReminder_enabled',
+			'call_rejectBusyOnDnd',
+			'call_advancedMissedCalls_addToReceivedList',
+			'up_useDirectoryNames',
+			'dir_local_readonly',
+			'se_pat_misc_messageWaiting_inst',
+			'feature_callRecording_enabled',
+			'apps_ucdesktop_adminEnabled',
+			'up_headsetMode',
+			'up_analogHeadsetOption',
+			'attendant_ringType',
+			'feature_directedCallPickup_enabled',
+			'attendant_spontaneousCallAppearances_normal',
+			'attendant_spontaneousCallAppearances_automata',
+			'powerSaving_enable',
+			'up_backlight_idleIntensity',
+			'up_backlight_onIntensity',
+			'feature_corporateDirectory_enabled',
+			'feature_exchangeCalendar_enabled',
+		);
+
+	$device['settings'] = array();
+
+	foreach ($fields as $field) 
+	{
+		$device['settings'][$field] = '';
+	}
 	
 	$device['lines'] = array();
-	foreach($lines as $line)
-		$device['lines'][$line['lineid']] = $line;
+	
+	if (is_array($lines)) 
+	{
+		foreach($lines as $line)
+		{
+			$device['lines'][$line['lineid']] = $line;
+		}
+	}
 	
 	foreach($device['lines'] as $key=>$line)
 	{
@@ -316,13 +369,16 @@ function polycomphones_get_phones_edit($id)
 	
 	$device['attendants'] = array();
 	foreach($attendants as $attendant)
+	{
 		$device['attendants'][$attendant['attendantid']] = $attendant;
+	}
 
-	$settings = sql("SELECT keyword, value FROM polycom_device_settings
-		WHERE id = \"{$db->escapeSimple($id)}\"",'getAll',DB_FETCHMODE_ASSOC);
+	$settings = sql("SELECT keyword, value FROM polycom_device_settings WHERE id = \"{$db->escapeSimple($id)}\"",'getAll',DB_FETCHMODE_ASSOC);
 
-	foreach($settings as $setting)
-		$device['settings'][$setting['keyword']]=$setting['value'];
+	foreach ($settings as $setting)
+	{
+		$device['settings'][$setting['keyword']] = $setting['value'];
+	}
 
 	return $device;
 }
@@ -335,16 +391,13 @@ function polycomphones_save_phones_edit($id, $device)
 	
 	if(empty($id))
 	{
-		sql("INSERT INTO polycom_devices (name, mac) 
-			VALUES ('".$db->escapeSimple($device['name'])."','".$db->escapeSimple($device['mac'])."')");
-		
+		sql("INSERT INTO polycom_devices (name, mac,model,version,lastconfig,lastip) VALUES ('".$db->escapeSimple($device['name'])."','".$db->escapeSimple($device['mac'])."','','',now(),'')");
 		$id = sql("SELECT LAST_INSERT_ID()",'getOne');
 	}
 	else
-		sql("UPDATE polycom_devices SET 
-				name = '".$db->escapeSimple($device['name'])."',
-				mac = '".$db->escapeSimple($device['mac'])."'
-			WHERE id = '".$db->escapeSimple($id)."'");
+	{
+		sql("UPDATE polycom_devices SET name = '".$db->escapeSimple($device['name'])."', mac = '".$db->escapeSimple($device['mac'])."' WHERE id = '".$db->escapeSimple($id)."'");
+	}
 	
 	sql("DELETE FROM polycom_device_lines WHERE id = '".$db->escapeSimple($id)."'");
 	sql("DELETE FROM polycom_device_line_settings WHERE id = '".$db->escapeSimple($id)."'");
@@ -369,10 +422,18 @@ function polycomphones_save_phones_edit($id, $device)
 	sql("DELETE FROM polycom_device_attendants WHERE id = '".$db->escapeSimple($id)."'");
 	
 	foreach($device['attendants'] as $attendantid => $attendant)
+	{
+		$type = "Normal";
+		if (isset($attendant['type']))
+		{
+			$type = $attendant['type'];
+		}
+
 		sql("INSERT INTO polycom_device_attendants (id, attendantid, keyword, value, label, type) 
 			VALUES ('".$db->escapeSimple($id)."','".$db->escapeSimple($attendantid)."','".
 				$db->escapeSimple($attendant['keyword'])."','".$db->escapeSimple($attendant['value'])."','".
-				$db->escapeSimple($attendant['label'])."','".$db->escapeSimple($attendant['type'])."')");
+				$db->escapeSimple($attendant['label'])."','".$db->escapeSimple($type)."')");
+	}
 	
 	$entries = array();
 	foreach ($device['settings'] as $key => $val)
@@ -580,8 +641,43 @@ function polycomphones_get_networks_edit($id)
 	$settings = sql("SELECT keyword, value FROM polycom_network_settings
 		WHERE id = \"{$db->escapeSimple($id)}\"",'getAll',DB_FETCHMODE_ASSOC);
 
+	if (!is_array($network)) 
+	{
+		$network = array(); // Initialize as empty array if it's false
+		$network["name"] = '';
+		$network["cidr"] = '';
+	}
+
+	$network['settings'] = array(
+		'prov_ssl' => '0',
+		'prov_username' => '',
+		'prov_password' => '',
+		'prov_uploads' => '1',
+		'device_dhcp_bootSrvUseOpt' => '',
+		'device_dhcp_bootSrvOpt' => '',
+		'device_prov_serverType' => '',
+		'device_prov_serverName' => '',
+		'device_prov_user' => '',
+		'device_prov_password' => '',
+		'address' => '',
+		'port' => '5060',
+		'expires' => '3600',
+		'nat_keepalive_interval' => '60',
+		'tcpIpApp_sntp_resyncPeriod' => '86400',
+		'tcpIpApp_sntp_address' => 'pool.ntp.org',
+		'tcpIpApp_sntp_address_overrideDHCP' => '1',
+		'tcpIpApp_sntp_gmtOffset' => '',
+		'tcpIpApp_sntp_gmtOffset_overrideDHCP' => '0',
+		'voice_codecPref_G711_Mu' => '6',
+		'voice_codecPref_G711_A' => '7',
+		'voice_codecPref_G722' => '4',
+		'voice_codecPref_G729_AB' => '8',
+	);
+
 	foreach($settings as $setting)
 		$network['settings'][$setting['keyword']]=$setting['value'];
+
+	
 		
 	return $network;
 }
@@ -780,46 +876,62 @@ function polycomphones_dropdown_attendant()
 	// My Features
 	$myfeatures = array();
 	
-	if(sql("SELECT id FROM modules WHERE modulename = 'callforward' AND enabled = '1'",'getOne'))
+	if (sql("SELECT id FROM modules WHERE modulename = 'callforward' AND enabled = '1'",'getOne'))
+	{
 		$myfeatures['callforward_1'] = 'Call Forward';
+	}
 		
-	if(sql("SELECT id FROM modules WHERE modulename = 'donotdisturb' AND enabled = '1'",'getOne'))
+	if (sql("SELECT id FROM modules WHERE modulename = 'donotdisturb' AND enabled = '1'",'getOne'))
+	{
 		$myfeatures['donotdisturb_1'] = 'DND';
-	
-	if(sql("SELECT id FROM modules WHERE modulename = 'findmefollow' AND enabled = '1'",'getOne'))
+	}
+		
+	if (sql("SELECT id FROM modules WHERE modulename = 'findmefollow' AND enabled = '1'",'getOne'))
+	{
 		$myfeatures['followme_1'] = 'Follow Me';
+	}
 	
-		if(count($myfeatures) > 0)
-			$dropdown['Line 1 Features'] = $myfeatures;	
+	if(count($myfeatures) > 0)
+	{
+		$dropdown['Line 1 Features'] = $myfeatures;	
+	}
 	
 	// Call Flow
 	$callflow_module = sql("SELECT id FROM modules WHERE modulename = 'daynight' AND enabled = '1'",'getOne');
 	
-	if($callflow_module)
+	if ($callflow_module)
 	{
-		$results = sql("SELECT ext, dest FROM daynight WHERE dmode = 'fc_description' ORDER BY ext",'getAll',DB_FETCHMODE_ASSOC);
+		$results = sql("SELECT ext, dest FROM daynight WHERE dmode = 'fc_description' ORDER BY ext",'getAll', DB_FETCHMODE_ASSOC);
 
 		$callflow = array();
 		foreach($results as $result)
+		{
 			$callflow['callflow_' . $result['ext']] = '<'.$result['ext'].'> '.$result['dest'];
+		}
 		
 		if(count($callflow) > 0)
+		{
 			$dropdown['Call Flow Control'] = $callflow;	
+		}
 	}
 	
 	// Conferences
 	$conference_module = sql("SELECT id FROM modules WHERE modulename = 'conferences' AND enabled = '1'",'getOne');
 	
-	if($conference_module)
+	if ($conference_module)
 	{
 		$results = sql("SELECT exten, description FROM meetme ORDER BY exten",'getAll',DB_FETCHMODE_ASSOC);
 
 		$conference = array();
-		foreach($results as $result)
+		foreach ($results as $result)
+		{
 			$conference['conference_' . $result['exten']] = '<'.$result['exten'].'> '.$result['description'];
+		}
 		
-		if(count($callflow) > 0)
+		if (count($conference) > 0)
+		{
 			$dropdown['Conferences'] = $conference;	
+		}
 	}	
 	
 	// Parking
@@ -840,7 +952,7 @@ function polycomphones_dropdown_attendant()
 	// Time Conditions
 	$timecondition_module = sql("SELECT id FROM modules WHERE modulename = 'timeconditions' AND enabled = '1'",'getOne');
 	
-	if($timecondition_module)
+	if ($timecondition_module)
 	{
 		$results = sql("SELECT timeconditions_id, displayname FROM timeconditions 
 			WHERE generate_hint = '1' ORDER BY timeconditions_id",'getAll',DB_FETCHMODE_ASSOC);
@@ -858,10 +970,15 @@ function polycomphones_dropdown_attendant()
 	
 	$users = array();
 	foreach($results as $result)
+	{
 		$users['user_' . $result['extension']] = '<'.$result['extension'].'> '.$result['name'];
+	}
 		
 	if(count($users) > 0)
+	{
 		$dropdown['Users'] = $users;
+	}
+		
 	
 	return $dropdown;
 }
@@ -1010,8 +1127,8 @@ function polycomphones_dropdown($id, $default = false, $defaultvalue = 'Default'
 function polycomphones_check_module($module)
 {
 	global $db;
-	return sql("SELECT id FROM modules 
-		WHERE modulename = '".$db->escapeSimple($module)."' AND enabled = '1'",'getOne');
+
+	return sql("SELECT id FROM modules WHERE modulename = '".$db->escapeSimple($module)."' AND enabled = '1'", 'getOne');
 }
 
 function polycomphones_get_kvstore($key)

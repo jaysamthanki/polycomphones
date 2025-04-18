@@ -1,6 +1,4 @@
 <?php /* $Id */
-if (!defined('FREEPBX_IS_AUTH')) { die('No direct script access allowed'); }
-
 /*
  * Copyright (C) 2015 Excalibur Partners, LLC (info@excalibur-partners.com)
  * 
@@ -14,12 +12,22 @@ if (!defined('FREEPBX_IS_AUTH')) { die('No direct script access allowed'); }
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+if (!defined('FREEPBX_IS_AUTH')) { die('No direct script access allowed'); }
+
+if (isset($_GET['polycomphones_form'])) 
+{
+  $polycomphonesForm = $_GET['polycomphones_form'];
+} 
+else 
+{
+  $polycomphonesForm = null; // or a default value
+}
 
 echo '<div class="container-fluid">
 <div class="row">
 <div class="col-sm-10">';
 
-switch($_GET['polycomphones_form'])
+switch($polycomphonesForm)
 {
 	case 'phones_list':
 		if(isset($_GET['delete']))
@@ -120,7 +128,10 @@ switch($_GET['polycomphones_form'])
 					}
 					
 					$device['attendants'][$key]['label'] = $_POST['label'][$key-1];
-					$device['attendants'][$key]['type'] = $_POST['type'][$key-1];
+					if (isset($_POST['type']) && isset($_POST['type'][$key-1]))
+					{
+						$device['attendants'][$key]['type'] = $_POST['type'][$key-1];
+					}
 				}
 			}
 
@@ -155,7 +166,9 @@ switch($_GET['polycomphones_form'])
 			);
 			
 			foreach ($fields as $field)
-				$device['settings'][$field] = $_POST[$field];
+			{
+						$device['settings'][$field] = $_POST[$field];
+			}
 		
 			polycomphones_save_phones_edit($_GET['edit'], $device);
 			polycomphones_multiple_check();
@@ -172,19 +185,26 @@ switch($_GET['polycomphones_form'])
 		}
 		
 		$features_module = polycomphones_check_module('phonefeatures');
+
 		$device = polycomphones_get_phones_edit($_GET['edit']);
 		
-		foreach($device['lines'] as $key=>$line)
+		foreach ($device['lines'] as $key => $line)
 		{	
-			if($line['deviceid'] != null)
+			if ($line['deviceid'] != null)
+			{
 				$device['lines'][$key]['line'] = 'freepbx_' . $line['deviceid'];
+			}
 			elseif($line['externalid'] != null)
+			{
 				$device['lines'][$key]['line'] = 'external_' . $line['externalid'];	
+			}
 		}
 		
-		foreach($device['attendants'] as $key=>$attendant)
+		foreach ($device['attendants'] as $key=>$attendant)
+		{
 			$device['attendants'][$key]['attendant'] = $attendant['keyword'].'_'.$attendant['value'];
-			
+		}
+
 		require 'modules/polycomphones/views/polycomphones_phones_edit.php';
 		break;
 		
@@ -353,7 +373,9 @@ switch($_GET['polycomphones_form'])
 			);
 			
 			foreach ($fields as $field)
+			{
 				$network['settings'][$field] = $_POST[$field];
+			}
 
 			polycomphones_save_networks_edit($_GET['edit'], $network);
 			redirect('config.php?type=setup&display=polycomphones&polycomphones_form=networks_list');
@@ -361,18 +383,6 @@ switch($_GET['polycomphones_form'])
 		
 		$kamailio_module = polycomphones_check_module('kamailio');
 		$network = polycomphones_get_networks_edit($_GET['edit']);
-
-		if(empty($_GET['edit']))
-		{
-			$network['settings']['prov_uploads'] = '1';
-			$network['settings']['port'] = '5060';
-			$network['settings']['expires'] = '5060';
-			$network['settings']['tcpIpApp_sntp_resyncPeriod'] = '86400';
-			$network['settings']['voice_codecPref_G711_Mu'] = '6';
-			$network['settings']['voice_codecPref_G711_A'] = '7';
-			$network['settings']['voice_codecPref_G722'] = '4';
-			$network['settings']['voice_codecPref_G729_AB'] = '8';
-		}		
 		
 		require 'modules/polycomphones/views/polycomphones_networks_edit.php';
 		break;

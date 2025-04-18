@@ -9,7 +9,7 @@ if (!@include_once(getenv('FREEPBX_CONF') ? getenv('FREEPBX_CONF') : '/etc/freep
 }
 
 // Basic sanity checks for MAC and user agent
-if(!isset($_GET['mac']) || preg_match('/^([a-f0-9]{12})$/', $_GET['mac']) != 1 || strpos($_SERVER['HTTP_USER_AGENT'], 'Poly') === false)
+if (!isset($_GET['mac']) || preg_match('/^([a-f0-9]{12})$/', $_GET['mac']) != 1 || strpos($_SERVER['HTTP_USER_AGENT'], 'Poly') === false)
 {
 	polycomphone_send_forbidden();
 }
@@ -193,7 +193,6 @@ $matches = array();
 preg_match('/FileTransport Polycom([^\/.]+)\/([\w\.]+)/', $_SERVER['HTTP_USER_AGENT'], $matches);
 
 // Require version and model to be provided
-
 if(empty($matches[1]) || empty($matches[2]))
 {
 	// Check for polyedge
@@ -211,7 +210,7 @@ $id = polycomphones_lookup_mac($_GET['mac']);
 $general = polycomphones_get_general_edit();
 
 // Add unknown device to database
-if($id == null)
+if ($id == null)
 {
 	sql("INSERT INTO polycom_devices (name, mac, model, version, lastconfig, lastip) 
 		VALUES ('Auto Added','" . $db->escapeSimple($_GET['mac']) . "','" . 
@@ -222,26 +221,22 @@ if($id == null)
 	
 	polycomphones_clear_overrides($_GET['mac']);
 	polycomphones_save_phones_directory($_GET['mac'], array());
-	
-	$device = polycomphones_get_phones_edit($id);
 }
-else
+
+$device = polycomphones_get_phones_edit($id);
+
+// If model known require it to match the user agent
+if(!empty($device['model']) && strpos($_SERVER['HTTP_USER_AGENT'], $device['model']) === false)
 {
-	$device = polycomphones_get_phones_edit($id);
-
-	// If model known require it to match the user agent
-	if(!empty($device['model']) && strpos($_SERVER['HTTP_USER_AGENT'], $device['model']) === false)
-	{
-		polycomphone_send_forbidden();
-	}
-
-	sql("UPDATE polycom_devices SET 
-			lastconfig = NOW(), 
-			model = '" . $db->escapeSimple($matches[1]) . "',
-			version = '" . $db->escapeSimple($matches[2]) . "',
-			lastip = '" . $db->escapeSimple($_SERVER['REMOTE_ADDR']) . "'
-		WHERE id = '" . $db->escapeSimple($id) . "'");
+	polycomphone_send_forbidden();
 }
+
+sql("UPDATE polycom_devices SET 
+		lastconfig = NOW(), 
+		model = '" . $db->escapeSimple($matches[1]) . "',
+		version = '" . $db->escapeSimple($matches[2]) . "',
+		lastip = '" . $db->escapeSimple($_SERVER['REMOTE_ADDR']) . "'
+	WHERE id = '" . $db->escapeSimple($id) . "'");
 
 $alerts = polycomphones_get_alertinfo_list();
 $exchange_module = polycomphones_check_module('exchangeum');
@@ -512,7 +507,7 @@ foreach($device['attendants'] as $attendant)
 }
 
 // Flexible Key Assignment
-if($device['settings']['lineKey_reassignment_enabled'] == '1')
+if ($device['settings']['lineKey_reassignment_enabled'] == '1')
 {
 	$xml->lineKey->reassignment->addAttribute("lineKey.reassignment.enabled", '1');
 	

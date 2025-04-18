@@ -111,8 +111,8 @@ $(function(){
 	<?php
 	} else { 
 	?>
-	<input type="hidden" name="kamailio_address" value="<?php echo $general['kamailio_address']; ?>">
-	<input type="hidden" name="kamailio_port" value="<?php echo $general['kamailio_port']; ?>">
+	<input type="hidden" name="kamailio_address" value="">
+	<input type="hidden" name="kamailio_port" value="">
 	<?php
 	}
 	?>
