@@ -1,3 +1,18 @@
+<?php
+$mbMainHome = null;
+$prov_polling_period = null;
+
+if (isset($general['mb_main_home'])) 
+{
+  $mbMainHome = $general['mb_main_home'];
+}
+
+if (isset($general['prov_polling_period']))
+{
+  $prov_polling_period = $general['prov_polling_period'];
+}
+
+?>
 <h2>General Settings</h2>
 <hr />
 
@@ -19,11 +34,11 @@
 	</tr>
 	<tr>
 		<td><?php echo _("Applications Home URL")?><span class="help">?<span style="display: none;">The URL of the microbrowser's Home page.</span></span></td>
-		<td><?php echo form_input('mb_main_home', $general['mb_main_home'], 'size="40"'); ?></td>	
+		<td><?php echo form_input('mb_main_home', $mbMainHome, 'size="40"'); ?></td>	
 	</tr>
 		<tr>
 		<td><?php echo _("Config Polling")?><span class="help">?<span style="display: none;">If a duration is selected the provisioning server is automatically polled for updates.</span></span></td>
-		<td><?php echo form_dropdown('prov_polling_period',  polycomphones_dropdown_numbers(1, 72, 1, ' hours', true, 'Disabled'), $general['prov_polling_period']); ?></td>	
+		<td><?php echo form_dropdown('prov_polling_period',  polycomphones_dropdown_numbers(1, 72, 1, ' hours', true, 'Disabled'), $prov_polling_period); ?></td>	
 	</tr>
 	
 	<tr><td colspan="2"><h5><?php echo _("Device Options")?><hr/></h5></td></tr>
